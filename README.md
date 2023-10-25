@@ -1,7 +1,7 @@
 # Quickstart
 Setup the ollama and litellm containers using the `Makefile`
 * `make setup-containers`
-* Optionally attempt to pull latest code for each container using `make setup-containers EXPERIMENTAL=True`
+* Optionally attempt to pull latest code for each container using `make setup-containers EXPERIMENTAL=true`
 
 ## Model Choice
 By default the [ollama zephyr model](https://ollama.ai/library/zephyr:latest) is downloaded and used.
