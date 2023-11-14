@@ -5,7 +5,6 @@ CONDA_ACTIVATE = source $$(conda info --base)/etc/profile.d/conda.sh ; conda act
 MODEL = dolphin-2.0-mistral-7b.Q8_0.gguf
 CORES := $(shell grep -P '^core id\t' /proc/cpuinfo | sort -u | wc -l)
 
-
 define deactivate_conda
 	for i in $(seq ${CONDA_SHLVL}); do
 		conda deactivate
@@ -26,15 +25,36 @@ install-llm-endpoint:
 	# build the binary
 	make BUILD_TYPE=openblas build
 
-	# # Download gpt4all-j to models/
-	# wget https://gpt4all.io/models/ggml-gpt4all-j.bin -O models/ggml-gpt4all-j
-
-	# # Use a template from the examples
-	# cp -rf prompt-templates/ggml-gpt4all-j.tmpl models/
+	# Copy model to LocalAI directory
 	cp /home/ubuntu/LocalLLM/$(MODEL) models/
+	cp -r /home/ubuntu/LocalLLM/model_configs/* models/
 
 	# Run LocalAI
-	./local-ai --models-path ./models/ --debug --threads 16
+	./local-ai --models-path ./models/ --debug --threads $(CORES)
+
+	# Now API is accessible at localhost:8080
+	curl http://localhost:8080/v1/models
+
+	curl http://localhost:8080/v1/chat/completions -H "Content-Type: application/json" -d '{
+		"model": "$(MODEL)",
+		"messages": [{"role": "user", "content": "How are you?"}],
+		"temperature": 0.9 
+	}'
+
+install-gpu-llm-endpoint:	
+	# clone the repo and navigate to it
+	git clone --branch feature/minimal-llm-container https://github.com/andrewginns/LocalAI.git
+	cd LocalAI
+
+	# build the binary
+	make BUILD_TYPE=cublas build
+
+	# Copy model and configs to LocalAI directory
+	cp /home/ubuntu/LocalLLM/$(MODEL) models/
+	cp -r /home/ubuntu/LocalLLM/model_configs/* models/
+
+	# Run LocalAI
+	./local-ai --models-path ./models/ --debug --threads $(CORES)
 
 	# Now API is accessible at localhost:8080
 	curl http://localhost:8080/v1/models
@@ -66,7 +86,7 @@ install-privateGPT:
 	sed -i "s/mythical-destroyer-v2-l2-13b.Q8_0/$(MODEL)/g" example.env
 	
 	# Replace the default embeddings model
-	sed -i "s%all-MiniLM-L6-v2%BAAI/bge-large-en%g" example.env
+	sed -i "s%all-MiniLM-L6-v2%BAAI/bge-large-en-v1.5%g" example.env
 
 ingest-privateGPT:
 	$(deactivate_conda)
